@@ -294,4 +294,4 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
 
 @register_preference(CurlCFFIRH)
 def curl_cffi_preference(rh, request):
-    return -100
+    return 200

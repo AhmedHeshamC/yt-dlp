@@ -4280,6 +4280,16 @@ class YoutubeDL:
                     'SSLV3_ALERT_HANDSHAKE_FAILURE: The server may not support the current cipher list. '
                     'Try using --legacy-server-connect', cause=e) from e
             raise
+        except HTTPError as e:
+            # Detect potential TLS fingerprinting when getting 403 errors
+            if (e.status == 403 
+                and 'curl_cffi' not in self._request_director.handlers
+                and not getattr(e.response, 'extensions', {}).get('impersonate')):
+                raise RequestError(
+                    'HTTP Error 403: This may be due to TLS fingerprinting. '
+                    'Install curl-cffi for better TLS fingerprint compatibility: '
+                    'python -m pip install --upgrade "yt-dlp[curl-cffi]"', cause=e) from e
+            raise
 
     def build_request_director(self, handlers, preferences=None):
         logger = _YDLLogger(self)
