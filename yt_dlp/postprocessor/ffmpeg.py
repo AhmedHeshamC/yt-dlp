@@ -249,7 +249,7 @@ class FFmpegPostProcessor(PostProcessor):
                     self.executable,
                     encodeArgument('-i')]
             cmd.append(self._ffmpeg_filename_argument(path))
-            self.write_debug(f'{self.basename} command line: {shell_quote(cmd)}')
+            self.write_debug(lambda: f'{self.basename} command line: {shell_quote(cmd)}')
             stdout, stderr, returncode = Popen.run(
                 cmd, text=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             if returncode != (0 if self.probe_available else 1):
@@ -291,7 +291,7 @@ class FFmpegPostProcessor(PostProcessor):
 
         cmd += opts
         cmd.append(self._ffmpeg_filename_argument(path))
-        self.write_debug(f'ffprobe command line: {shell_quote(cmd)}')
+        self.write_debug(lambda: f'ffprobe command line: {shell_quote(cmd)}')
         stdout, _, _ = Popen.run(cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         return json.loads(stdout)
 
@@ -359,7 +359,7 @@ class FFmpegPostProcessor(PostProcessor):
                 make_args(path, list(opts), arg_type, i + 1)
                 for i, (path, opts) in enumerate(path_opts) if path)
 
-        self.write_debug(f'ffmpeg command line: {shell_quote(cmd)}')
+        self.write_debug(lambda: f'ffmpeg command line: {shell_quote(cmd)}')
         _, stderr, returncode = Popen.run(
             cmd, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE)
         if returncode not in variadic(expected_retcodes):
@@ -1144,7 +1144,7 @@ class FFmpegConcatPP(FFmpegPostProcessor):
 
     def _get_codecs(self, file):
         codecs = traverse_obj(self.get_metadata_object(file), ('streams', ..., 'codec_name'))
-        self.write_debug(f'Codecs = {", ".join(codecs)}')
+        self.write_debug(lambda: f'Codecs = {", ".join(codecs)}')
         return tuple(codecs)
 
     def concat_files(self, in_files, out_file):

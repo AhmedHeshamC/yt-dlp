@@ -542,9 +542,9 @@ class TumblrIE(InfoExtractor):
             if not entries:
                 raise ExtractorError(f'None of embed providers are supported: {", ".join(ignored_providers)!s}', video_id=video_id, expected=True)
             else:
-                self.report_warning(f'Skipped embeds from unsupported providers: {", ".join(ignored_providers)!s}', video_id)
+                self.report_warning(lambda: f'Skipped embeds from unsupported providers: {", ".join(ignored_providers)!s}', video_id)
         if unknown_providers:
-            self.report_warning(f'Unrecognized providers, please report: {", ".join(unknown_providers)!s}', video_id)
+            self.report_warning(lambda: f'Unrecognized providers, please report: {", ".join(unknown_providers)!s}', video_id)
 
         if not entries:
             self.raise_no_formats('No video could be found in this post', expected=True, video_id=video_id)
