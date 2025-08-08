@@ -3241,16 +3241,22 @@ class YoutubeDL:
 
         # Apply smart default for concurrent fragments if user didn't specify and protocol supports it
         if (params.get('concurrent_fragment_downloads') == 1 and  # User didn't specify
-            info.get('protocol') and 
-            any(proto in info.get('protocol', '') for proto in 
-                ['http_dash_segments', 'm3u8_native', 'f4m'])):
-            # Calculate conservative default based on CPU count
-            cpu_count = os.cpu_count() or 1
-            # Conservative approach: use half of CPU cores, but cap at 4 and minimum 1
-            smart_default = min(max(cpu_count // 2, 1), 4)
-            if smart_default > 1:
-                params = params.copy()
-                params['concurrent_fragment_downloads'] = smart_default
+            info.get('protocol')):
+            protocol = info.get('protocol', '')
+            # Check if protocol supports fragmented downloads
+            fragment_protocols = ['http_dash_segments', 'm3u8_native', 'f4m']
+            if any(proto in protocol for proto in fragment_protocols):
+                # Calculate conservative default based on CPU count
+                cpu_count = os.cpu_count() or 1
+                # Conservative approach: use half of CPU cores, but cap at 4 and minimum 1
+                smart_default = min(max(cpu_count // 2, 1), 4)
+                if smart_default > 1:
+                    params = params.copy()
+                    params['concurrent_fragment_downloads'] = smart_default
+                    if not test:  # Only log for actual downloads, not tests
+                        self.write_debug(
+                            f'Applied smart default for concurrent fragments: {smart_default} '
+                            f'(protocol: {protocol}, CPU count: {cpu_count})')
 
         fd = get_suitable_downloader(info, params, to_stdout=(name == '-'))(self, params)
         if not test:
@@ -3445,15 +3451,20 @@ class YoutubeDL:
                     # Apply smart default for concurrent fragments if user didn't specify and protocol supports it
                     download_params = self.params.copy()
                     if (download_params.get('concurrent_fragment_downloads') == 1 and  # User didn't specify
-                        info_dict.get('protocol') and 
-                        any(proto in info_dict.get('protocol', '') for proto in 
-                            ['http_dash_segments', 'm3u8_native', 'f4m'])):
-                        # Calculate conservative default based on CPU count
-                        cpu_count = os.cpu_count() or 1
-                        # Conservative approach: use half of CPU cores, but cap at 4 and minimum 1
-                        smart_default = min(max(cpu_count // 2, 1), 4)
-                        if smart_default > 1:
-                            download_params['concurrent_fragment_downloads'] = smart_default
+                        info_dict.get('protocol')):
+                        protocol = info_dict.get('protocol', '')
+                        # Check if protocol supports fragmented downloads
+                        fragment_protocols = ['http_dash_segments', 'm3u8_native', 'f4m']
+                        if any(proto in protocol for proto in fragment_protocols):
+                            # Calculate conservative default based on CPU count
+                            cpu_count = os.cpu_count() or 1
+                            # Conservative approach: use half of CPU cores, but cap at 4 and minimum 1
+                            smart_default = min(max(cpu_count // 2, 1), 4)
+                            if smart_default > 1:
+                                download_params['concurrent_fragment_downloads'] = smart_default
+                                self.write_debug(
+                                    f'Applied smart default for concurrent fragments: {smart_default} '
+                                    f'(protocol: {protocol}, CPU count: {cpu_count})')
                     
                     fd = get_suitable_downloader(info_dict, download_params, to_stdout=temp_filename == '-')
                     if fd != FFmpegFD and 'no-direct-merge' not in self.params['compat_opts'] and (
