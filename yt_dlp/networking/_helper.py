@@ -181,6 +181,16 @@ class InstanceStoreMixin:
             self._close_instance(instance)
         self.__instances.clear()
 
+    def _get_shared_instance(self, **kwargs):
+        """Get a shared instance that can be reused across requests for connection pooling"""
+        # Use a simplified key for better connection reuse
+        # Only differentiate on critical parameters that affect connection behavior
+        pool_key = {
+            k: v for k, v in kwargs.items() 
+            if k in ('cookiejar', 'proxy', 'verify_ssl', 'legacy_ssl_support')
+        }
+        return self._get_instance(**pool_key)
+
 
 def add_accept_encoding_header(headers: HTTPHeaderDict, supported_encodings: Iterable[str]):
     if 'Accept-Encoding' not in headers:

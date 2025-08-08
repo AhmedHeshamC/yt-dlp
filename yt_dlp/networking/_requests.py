@@ -311,7 +311,7 @@ class RequestsRH(RequestHandler, InstanceStoreMixin):
         headers = self._get_headers(request)
         max_redirects_exceeded = False
 
-        session = self._get_instance(
+        session = self._get_shared_instance(
             cookiejar=self._get_cookiejar(request),
             legacy_ssl_support=request.extensions.get('legacy_ssl'),
         )
