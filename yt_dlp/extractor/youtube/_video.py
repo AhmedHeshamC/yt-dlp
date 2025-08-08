@@ -2385,7 +2385,7 @@ class YoutubeIE(YoutubeBaseInfoExtractor):
                     player_url and f'        player = {player_url}', delim='\n'), only_once=True)
 
         if debug_names:
-            self.write_debug(f'Extracted global nsig functions: {", ".join(debug_names)}')
+            self.write_debug(lambda: f'Extracted global nsig functions: {", ".join(debug_names)}')
 
         return argnames, fixed_code
 

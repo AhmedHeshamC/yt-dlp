@@ -966,10 +966,16 @@ class YoutubeDL:
     def to_screen(self, message, skip_eol=False, quiet=None, only_once=False):
         """Print message to screen if not in quiet mode"""
         if self.params.get('logger'):
+            # Support callable messages for lazy evaluation
+            if callable(message):
+                message = message()
             self.params['logger'].debug(message)
             return
         if (self.params.get('quiet') if quiet is None else quiet) and not self.params.get('verbose'):
             return
+        # Support callable messages for lazy evaluation
+        if callable(message):
+            message = message()
         self._write_string(
             '{}{}'.format(self._bidi_workaround(message), ('' if skip_eol else '\n')),
             self._out_files.screen, only_once=only_once)
@@ -1105,10 +1111,16 @@ class YoutubeDL:
         If stderr is a tty file the 'WARNING:' will be colored
         """
         if self.params.get('logger') is not None:
+            # Support callable messages for lazy evaluation
+            if callable(message):
+                message = message()
             self.params['logger'].warning(message)
         else:
             if self.params.get('no_warnings'):
                 return
+            # Support callable messages for lazy evaluation
+            if callable(message):
+                message = message()
             self.to_stderr(f'{self._format_err("WARNING:", self.Styles.WARNING)} {message}', only_once)
 
     def deprecation_warning(self, message, *, stacklevel=0):
@@ -1131,6 +1143,9 @@ class YoutubeDL:
         """Log debug message or Print message to stderr"""
         if not self.params.get('verbose', False):
             return
+        # Support callable messages for lazy evaluation
+        if callable(message):
+            message = message()
         message = f'[debug] {message}'
         if self.params.get('logger'):
             self.params['logger'].debug(message)
@@ -4062,11 +4077,11 @@ class YoutubeDL:
 
         logger = self.params.get('logger')
         if logger:
-            write_debug = lambda msg: logger.debug(f'[debug] {msg}')
+            write_debug = lambda msg: logger.debug(f'[debug] {msg() if callable(msg) else msg}')
             write_debug(encoding_str)
         else:
             write_string(f'[debug] {encoding_str}\n', encoding=None)
-            write_debug = lambda msg: self._write_string(f'[debug] {msg}\n')
+            write_debug = lambda msg: self._write_string(f'[debug] {msg() if callable(msg) else msg}\n')
 
         source = detect_variant()
         if VARIANT not in (None, 'pip'):
@@ -4116,7 +4131,7 @@ class YoutubeDL:
         })) or 'none'))
 
         write_debug(f'Proxy map: {self.proxies}')
-        write_debug(f'Request Handlers: {", ".join(rh.RH_NAME for rh in self._request_director.handlers.values())}')
+        write_debug(lambda: f'Request Handlers: {", ".join(rh.RH_NAME for rh in self._request_director.handlers.values())}')
 
         for plugin_type, plugins in (('Extractor', plugin_ies), ('Post-Processor', plugin_pps)):
             display_list = [
@@ -4127,7 +4142,7 @@ class YoutubeDL:
                                     for parent, plugins in plugin_ies_overrides.value.items())
             if not display_list:
                 continue
-            write_debug(f'{plugin_type} Plugins: {", ".join(sorted(display_list))}')
+            write_debug(lambda: f'{plugin_type} Plugins: {", ".join(sorted(display_list))}')
 
         plugin_dirs_msg = 'none'
         if not plugin_dirs.value:
