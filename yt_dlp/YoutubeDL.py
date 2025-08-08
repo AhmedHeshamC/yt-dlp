@@ -194,6 +194,37 @@ def _catch_unsafe_extension_error(func):
     return wrapper
 
 
+# Template evaluation cache for frequently used format strings
+@functools.lru_cache(maxsize=128)
+def _get_external_format_regex():
+    """Cache compiled external format regex to avoid repeated compilation."""
+    return re.compile(STR_FORMAT_RE_TMPL.format('[^)]*', f'[{STR_FORMAT_TYPES}ljhqBUDS]'))
+
+
+@functools.lru_cache(maxsize=128)
+def _get_internal_format_regex():
+    """Cache compiled internal format regex to avoid repeated compilation."""
+    # Field is of the form key1.key2...
+    # where keys (except first) can be string, int, slice or "{field, ...}"
+    FIELD_INNER_RE = r'(?:\w+|%(num)s|%(num)s?(?::%(num)s?){1,2})' % {'num': r'(?:-?\d+)'}  # noqa: UP031
+    FIELD_RE = r'\w*(?:\.(?:%(inner)s|{%(field)s(?:,%(field)s)*}))*' % {  # noqa: UP031
+        'inner': FIELD_INNER_RE,
+        'field': rf'\w*(?:\.{FIELD_INNER_RE})*',
+    }
+    MATH_FIELD_RE = rf'(?:{FIELD_RE}|-?{NUMBER_RE})'
+    MATH_OPERATORS_RE = r'(?:{})'.format('|'.join(map(re.escape, ['+', '-', '*'])))
+    return re.compile(rf'''(?xs)
+        (?P<negate>-)?
+        (?P<fields>{FIELD_RE})
+        (?P<maths>(?:{MATH_OPERATORS_RE}{MATH_FIELD_RE})*)
+        (?:>(?P<strf_format>.+?))?
+        (?P<remaining>
+            (?P<alternate>(?<!\\),[^|&)]+)?
+            (?:&(?P<replacement>.*?))?
+            (?:\|(?P<default>.*?))?
+        )$''')
+
+
 class YoutubeDL:
     """YoutubeDL class.
 
@@ -1254,7 +1285,9 @@ class YoutubeDL:
         }
 
         TMPL_DICT = {}
-        EXTERNAL_FORMAT_RE = re.compile(STR_FORMAT_RE_TMPL.format('[^)]*', f'[{STR_FORMAT_TYPES}ljhqBUDS]'))
+        # Use cached regex compilation to avoid repeated regex work
+        EXTERNAL_FORMAT_RE = _get_external_format_regex()
+        INTERNAL_FORMAT_RE = _get_internal_format_regex()
         MATH_FUNCTIONS = {
             '+': float.__add__,
             '-': float.__sub__,
@@ -1269,16 +1302,6 @@ class YoutubeDL:
         }
         MATH_FIELD_RE = rf'(?:{FIELD_RE}|-?{NUMBER_RE})'
         MATH_OPERATORS_RE = r'(?:{})'.format('|'.join(map(re.escape, MATH_FUNCTIONS.keys())))
-        INTERNAL_FORMAT_RE = re.compile(rf'''(?xs)
-            (?P<negate>-)?
-            (?P<fields>{FIELD_RE})
-            (?P<maths>(?:{MATH_OPERATORS_RE}{MATH_FIELD_RE})*)
-            (?:>(?P<strf_format>.+?))?
-            (?P<remaining>
-                (?P<alternate>(?<!\\),[^|&)]+)?
-                (?:&(?P<replacement>.*?))?
-                (?:\|(?P<default>.*?))?
-            )$''')
 
         def _from_user_input(field):
             if field == ':':
