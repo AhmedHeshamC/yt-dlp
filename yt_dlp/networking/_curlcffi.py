@@ -177,7 +177,14 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
     }
 
     def _create_instance(self, cookiejar=None):
-        return curl_cffi.requests.Session(cookies=cookiejar)
+        session = curl_cffi.requests.Session(cookies=cookiejar)
+        # Enable HTTP/2 for better performance and multiplexing
+        session.curl.setopt(CurlOpt.HTTP_VERSION, 2)  # Force HTTP/2
+        # Enable connection reuse and keep-alive
+        session.curl.setopt(CurlOpt.TCP_KEEPALIVE, 1)
+        session.curl.setopt(CurlOpt.TCP_KEEPIDLE, 60)
+        session.curl.setopt(CurlOpt.TCP_KEEPINTVL, 30)
+        return session
 
     def _check_extensions(self, extensions):
         super()._check_extensions(extensions)
@@ -200,7 +207,7 @@ class CurlCFFIRH(ImpersonateRequestHandler, InstanceStoreMixin):
 
     def _send(self, request: Request):
         max_redirects_exceeded = False
-        session: curl_cffi.requests.Session = self._get_instance(
+        session: curl_cffi.requests.Session = self._get_shared_instance(
             cookiejar=self._get_cookiejar(request) if 'cookie' not in request.headers else None)
 
         if self.verbose:

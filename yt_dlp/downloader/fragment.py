@@ -3,6 +3,7 @@ import contextlib
 import json
 import math
 import os
+import random
 import struct
 import time
 
@@ -484,9 +485,27 @@ class FragmentFD(FileDownloader):
 
         max_workers = math.ceil(
             self.params.get('concurrent_fragment_downloads', 1) / ctx.get('max_progress', 1))
+        
+        # Check if curl-cffi handler is available for HTTP/2 multiplexing
+        use_http2_multiplexing = False
+        try:
+            from ..networking._curlcffi import CurlCFFIRH
+            # If curl-cffi is available and we have multiple workers, enable HTTP/2 multiplexing
+            if max_workers > 1:
+                rh_handlers = getattr(self.ydl, '_request_director', None)
+                if rh_handlers and any(isinstance(h, CurlCFFIRH) for h in rh_handlers.handlers.values()):
+                    use_http2_multiplexing = True
+                    # Increase concurrency for HTTP/2 but respect limits
+                    max_workers = min(max_workers * 2, 8)  # Cap at 8 to respect server limits
+        except ImportError:
+            pass
+        
         if max_workers > 1:
             def _download_fragment(fragment):
                 ctx_copy = ctx.copy()
+                # Add small delay for HTTP/2 multiplexing to avoid overwhelming server
+                if use_http2_multiplexing:
+                    time.sleep(random.uniform(0.01, 0.05))  # 10-50ms random delay
                 download_fragment(fragment, ctx_copy)
                 return fragment, fragment['frag_index'], ctx_copy.get('fragment_filename_sanitized')
 

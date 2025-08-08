@@ -390,7 +390,7 @@ class UrllibRH(RequestHandler, InstanceStoreMixin):
             method=request.method,
         )
 
-        opener = self._get_instance(
+        opener = self._get_shared_instance(
             proxies=self._get_proxies(request),
             cookiejar=self._get_cookiejar(request),
             legacy_ssl_support=request.extensions.get('legacy_ssl'),
