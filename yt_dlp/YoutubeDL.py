@@ -1906,7 +1906,7 @@ class YoutubeDL:
                     additional_urls = [additional_urls]
                 self.to_screen(
                     '[info] {}: {} additional URL(s) requested'.format(ie_result['id'], len(additional_urls)))
-                self.write_debug('Additional URLs: "{}"'.format('", "'.join(additional_urls)))
+                self.write_debug(lambda: 'Additional URLs: "{}"'.format('", "'.join(additional_urls)))
                 ie_result['additional_entries'] = [
                     self.extract_info(
                         url, download, extra_info=extra_info,
@@ -4105,7 +4105,7 @@ class YoutubeDL:
         elif not lazy_extractors:
             write_debug('Lazy loading extractors is forcibly disabled')
         if self.params['compat_opts']:
-            write_debug('Compatibility options: {}'.format(', '.join(self.params['compat_opts'])))
+            write_debug(lambda: 'Compatibility options: {}'.format(', '.join(self.params['compat_opts'])))
 
         if current_git_head():
             write_debug(f'Git HEAD: {current_git_head()}')
