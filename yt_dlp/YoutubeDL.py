@@ -638,6 +638,30 @@ class YoutubeDL:
         """
         if params is None:
             params = {}
+        
+        # Apply sensible defaults for retry sleep if not specified
+        if 'retry_sleep_functions' not in params or not params['retry_sleep_functions']:
+            # Import parse_sleep_func from __init__.py where it's defined
+            import re
+            
+            def parse_sleep_func(expr):
+                NUMBER_RE = r'\d+(?:\.\d+)?'
+                op, start, limit, step, *_ = (*tuple(re.fullmatch(
+                    rf'(?:(linear|exp)=)?({NUMBER_RE})(?::({NUMBER_RE})?)?(?::({NUMBER_RE}))?',
+                    expr.strip()).groups()), None, None)
+
+                if op == 'exp':
+                    return lambda n: min(float(start) * (float(step or 2) ** n), float(limit or 'inf'))
+                else:
+                    default_step = start if op or limit else 0
+                    return lambda n: min(float(start) + float(step or default_step) * n, float(limit or 'inf'))
+            
+            params = dict(params)  # Make a copy to avoid modifying the original
+            params['retry_sleep_functions'] = {
+                'http': parse_sleep_func('exp=0.5:10:2'),      # HTTP retries: 0.5s, 1s, 2s, 4s, 8s, 10s (cap)
+                'extractor': parse_sleep_func('exp=1:16:2'),   # Extractor retries: 1s, 2s, 4s (max 3 retries typically)
+            }
+        
         self.params = params
         self._ies = {}
         self._ies_instances = {}

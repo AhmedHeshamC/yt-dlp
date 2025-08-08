@@ -290,6 +290,13 @@ def validate_options(opts):
             default_step = start if op or limit else 0
             return lambda n: min(float(start) + float(step or default_step) * n, float(limit or 'inf'))
 
+    # Set sensible defaults for retry sleep if not specified
+    if not opts.retry_sleep:
+        opts.retry_sleep = {
+            'http': 'exp=0.5:10:2',      # HTTP retries: 0.5s, 1s, 2s, 4s, 8s, 10s (cap)
+            'extractor': 'exp=1:16:2',   # Extractor retries: 1s, 2s, 4s (max 3 retries typically)
+        }
+
     for key, expr in opts.retry_sleep.items():
         if not expr:
             del opts.retry_sleep[key]
