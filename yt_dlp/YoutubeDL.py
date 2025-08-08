@@ -3,9 +3,9 @@ import contextlib
 import copy
 import datetime as dt
 import errno
-import fileinput
+
 import functools
-import http.cookiejar
+
 import io
 import itertools
 import json
@@ -20,19 +20,19 @@ import subprocess
 import sys
 import tempfile
 import time
-import tokenize
+
 import traceback
-import unicodedata
+
 
 from .cache import Cache
 from .compat import urllib  # isort: split
 from .compat import urllib_req_to_req
 from .cookies import CookieLoadError, LenientSimpleCookie, load_cookies
 from .downloader import FFmpegFD, get_suitable_downloader, shorten_protocol_name
-from .downloader.rtmp import rtmpdump_version
+
 from .extractor import gen_extractor_classes, get_info_extractor, import_extractors
 from .extractor.common import UnsupportedURLIE
-from .extractor.openload import PhantomJSwrapper
+
 from .globals import (
     IN_CLI,
     LAZY_EXTRACTORS,
@@ -53,8 +53,8 @@ from .networking.exceptions import (
     SSLError,
     network_exceptions,
 )
-from .networking.impersonate import ImpersonateRequestHandler, ImpersonateTarget
-from .plugins import directories as plugin_directories, load_all_plugins
+
+
 from .postprocessor import (
     EmbedThumbnailPP,
     FFmpegFixupDuplicateMoovPP,
@@ -69,15 +69,8 @@ from .postprocessor import (
     MoveFilesAfterDownloadPP,
     get_postprocessor,
 )
-from .postprocessor.ffmpeg import resolve_mapping as resolve_recode_mapping
-from .update import (
-    REPOSITORY,
-    _get_system_deprecation,
-    _get_outdated_warning,
-    _make_label,
-    current_git_head,
-    detect_variant,
-)
+
+
 from .utils import (
     DEFAULT_OUTTMPL,
     IDENTITY,
@@ -658,6 +651,7 @@ class YoutubeDL:
 
         # compat for API: load plugins if they have not already
         if not all_plugins_loaded.value:
+            from .plugins import load_all_plugins
             load_all_plugins()
 
         stdout = sys.stderr if self.params.get('logtostderr') else sys.stdout
@@ -702,6 +696,7 @@ class YoutubeDL:
             for name, stream in self._out_files.items_ if name != 'console'
         })
 
+        from .update import _get_system_deprecation, _get_outdated_warning
         system_deprecation = _get_system_deprecation()
         if system_deprecation:
             self.deprecated_feature(system_deprecation.replace('\n', '\n                    '))
@@ -1423,6 +1418,7 @@ class YoutubeDL:
                 value = f'%{str_fmt}'.encode() % str(value).encode()
                 value, fmt = value.decode('utf-8', 'ignore'), 's'
             elif fmt[-1] == 'U':  # unicode normalized
+                import unicodedata
                 value, fmt = unicodedata.normalize(
                     # "+" = compatibility equivalence, "#" = NFD
                     'NF{}{}'.format('K' if '+' in flags else '', 'D' if '#' in flags else 'C'),
@@ -1759,6 +1755,7 @@ class YoutubeDL:
             expiry = cookie.get('expires')
             if expiry == '':  # 0 is valid
                 expiry = None
+            import http.cookiejar
             prepared_cookie = http.cookiejar.Cookie(
                 cookie.get('version') or 0, cookie.key, cookie.value, None, False,
                 domain, True, True, cookie.get('path') or '', bool(cookie.get('path')),
@@ -2300,6 +2297,7 @@ class YoutubeDL:
         def _remove_unused_ops(tokens):
             # Remove operators that we don't use and join them with the surrounding strings.
             # E.g. 'mp4' '-' 'baseline' '-' '16x9' is converted to 'mp4-baseline-16x9'
+            import tokenize
             ALLOWED_OPS = ('/', '+', ',', '(', ')')
             last_string, last_start, last_end, last_line = None, None, None, None
             for type_, string_, start, end, line in tokens:
@@ -2587,6 +2585,7 @@ class YoutubeDL:
         #       Prefix numbers with random letters to avoid it being classified as a number
         #       See: https://github.com/yt-dlp/yt-dlp/pulls/8797
         # TODO: Implement parser not reliant on tokenize.tokenize
+        import tokenize
         prefix = ''.join(random.choices(string.ascii_letters, k=32))
         stream = io.BytesIO(re.sub(r'\d[_\d]*', rf'{prefix}\g<0>', format_spec).encode())
         try:
@@ -3588,6 +3587,7 @@ class YoutubeDL:
                     downloader = downloader.FD_NAME if downloader else None
 
                     ext = info_dict.get('ext')
+                    from .postprocessor.ffmpeg import resolve_mapping as resolve_recode_mapping
                     postprocessed_by_ffmpeg = info_dict.get('requested_formats') or any((
                         isinstance(pp, FFmpegVideoConvertorPP)
                         and resolve_recode_mapping(ext, pp.mapping)[0] not in (ext, None)
@@ -3665,6 +3665,7 @@ class YoutubeDL:
         return self._download_retcode
 
     def download_with_info_file(self, info_filename):
+        import fileinput
         with contextlib.closing(fileinput.FileInput(
                 [info_filename], mode='r',
                 openhook=fileinput.hook_encoded('utf-8'))) as f:
@@ -3691,8 +3692,12 @@ class YoutubeDL:
         """ Sanitize the infodict for converting to json """
         if info_dict is None:
             return info_dict
+        
+        from .networking.impersonate import ImpersonateTarget
+        
         info_dict.setdefault('epoch', int(time.time()))
         info_dict.setdefault('_type', 'video')
+        from .update import current_git_head
         info_dict.setdefault('_version', {
             'version': __version__,
             'current_git_head': current_git_head(),
@@ -4068,6 +4073,7 @@ class YoutubeDL:
             write_string(f'[debug] {encoding_str}\n', encoding=None)
             write_debug = lambda msg: self._write_string(f'[debug] {msg}\n')
 
+        from .update import REPOSITORY, _make_label, detect_variant, current_git_head
         source = detect_variant()
         if VARIANT not in (None, 'pip'):
             source += '*'
@@ -4101,6 +4107,8 @@ class YoutubeDL:
         if ffmpeg_features:
             exe_versions['ffmpeg'] += ' ({})'.format(','.join(sorted(ffmpeg_features)))
 
+        from .downloader.rtmp import rtmpdump_version
+        from .extractor.openload import PhantomJSwrapper
         exe_versions['rtmpdump'] = rtmpdump_version()
         exe_versions['phantomjs'] = PhantomJSwrapper._version()
         exe_str = ', '.join(
@@ -4133,6 +4141,7 @@ class YoutubeDL:
         if not plugin_dirs.value:
             plugin_dirs_msg = 'none (disabled)'
         else:
+            from .plugins import directories as plugin_directories
             found_plugin_directories = plugin_directories()
             if found_plugin_directories:
                 plugin_dirs_msg = ', '.join(found_plugin_directories)
@@ -4178,6 +4187,7 @@ class YoutubeDL:
 
     def _get_available_impersonate_targets(self):
         # TODO(future): make available as public API
+        from .networking.impersonate import ImpersonateRequestHandler
         return [
             (target, rh.RH_NAME)
             for rh in self._request_director.handlers.values()
@@ -4187,12 +4197,14 @@ class YoutubeDL:
 
     def _impersonate_target_available(self, target):
         # TODO(future): make available as public API
+        from .networking.impersonate import ImpersonateRequestHandler
         return any(
             rh.is_supported_target(target)
             for rh in self._request_director.handlers.values()
             if isinstance(rh, ImpersonateRequestHandler))
 
     def _parse_impersonate_targets(self, impersonate):
+        from .networking.impersonate import ImpersonateTarget
         if impersonate in (True, ''):
             impersonate = ImpersonateTarget()
 
